@@ -1,24 +1,45 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Image from 'next/image'
 
-interface GalleryProps {
-  limit?: number
+interface GalleryItem {
+  id: number
+  public_id: string
+  url: string
+  category: string
+  title: string | null
+  description: string | null
+  alt_text: string | null
 }
 
-const Gallery = ({ limit }: GalleryProps) => {
+const Gallery = ({ limit }: { limit?: number }) => {
   const [selectedCategory, setSelectedCategory] = useState('all')
-  
-  const galleryItems = [
-    { id: 1, category: 'wedding', src: '/images/gallery/wedding1.jpg', alt: 'Traditional South Indian Wedding' },
-    { id: 2, category: 'prewedding', src: '/images/gallery/prewedding1.jpg', alt: 'Romantic Pre-Wedding Shoot' },
-    { id: 3, category: 'ceremony', src: '/images/gallery/ceremony1.jpg', alt: 'Wedding Ceremony' },
-    { id: 4, category: 'couple', src: '/images/gallery/couple1.jpg', alt: 'Candid Couple Moments' },
-    { id: 5, category: 'wedding', src: '/images/gallery/wedding2.jpg', alt: 'Bridal Portraits' },
-    { id: 6, category: 'prewedding', src: '/images/gallery/prewedding2.jpg', alt: 'Engagement Shoot' },
-    { id: 7, category: 'ceremony', src: '/images/gallery/ceremony2.jpg', alt: 'Traditional Rituals' },
-    { id: 8, category: 'couple', src: '/images/gallery/couple2.jpg', alt: 'Love Story' },
-  ]
+  const [images, setImages] = useState<GalleryItem[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchGalleryImages()
+  }, [selectedCategory])
+
+  const fetchGalleryImages = async () => {
+    try {
+      const query = selectedCategory === 'all' 
+        ? '' 
+        : `?category=${selectedCategory}`
+      
+      const response = await fetch(`/api/gallery${query}`)
+      const data = await response.json()
+      
+      if (data.images) {
+        setImages(data.images)
+      }
+    } catch (error) {
+      console.error('Error fetching images:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const categories = [
     { id: 'all', name: 'All' },
@@ -28,11 +49,15 @@ const Gallery = ({ limit }: GalleryProps) => {
     { id: 'couple', name: 'Couples' },
   ]
 
-  const filteredItems = selectedCategory === 'all' 
-    ? galleryItems 
-    : galleryItems.filter(item => item.category === selectedCategory)
+  const displayItems = limit ? images.slice(0, limit) : images
 
-  const displayItems = limit ? filteredItems.slice(0, limit) : filteredItems
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold"></div>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -56,15 +81,30 @@ const Gallery = ({ limit }: GalleryProps) => {
         {displayItems.map((item) => (
           <div
             key={item.id}
-            className="relative group overflow-hidden cursor-pointer aspect-square bg-gray-200"
+            className="relative group overflow-hidden cursor-pointer aspect-square"
           >
-            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-              <span className="text-gray-400">Image: {item.alt}</span>
+            <div className="relative w-full h-full">
+              <Image
+                src={item.url}
+                alt={item.alt_text || item.title || 'Wedding photo'}
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                className="object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             </div>
-            <div className="absolute inset-0 bg-gold/0 group-hover:bg-gold/20 transition-all duration-500" />
-            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent translate-y-full group-hover:translate-y-0 transition-transform duration-500">
-              <p className="text-white font-medium">{item.alt}</p>
-            </div>
+            {(item.title || item.description) && (
+              <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-500 bg-gradient-to-t from-black/80 to-transparent">
+                {item.title && (
+                  <h3 className="text-white font-playfair text-lg mb-1">
+                    {item.title}
+                  </h3>
+                )}
+                {item.description && (
+                  <p className="text-gray-200 text-sm">{item.description}</p>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
