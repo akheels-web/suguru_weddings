@@ -1,24 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
-import { getDb } from '@/lib/db'
-import { saveUploadedFile } from '@/lib/storage'
+import { uploadToCloudinary } from '@/lib/cloudinary'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser()
     if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
     const formData = await request.formData()
     const file = formData.get('file') as File
     const category = formData.get('category') as string
-    const title = formData.get('title') as string
-    const description = formData.get('description') as string
-    const altText = formData.get('alt_text') as string
     
     if (!file || !category) {
       return NextResponse.json(
@@ -27,34 +21,31 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Save file to disk
-    const uploadResult = await saveUploadedFile(file)
+    // Upload to Cloudinary
+    const uploadResult: any = await uploadToCloudinary(file, `suguru-weddings/${category}`)
     
-    // Save to database
-    const db = await getDb()
-    const result = await db.run(
-      `INSERT INTO gallery_images 
-       (filename, original_name, category, title, description, alt_text, size, mime_type, uploaded_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        uploadResult.filename,
-        uploadResult.originalName,
+    // Save metadata to Supabase
+    const { data, error } = await supabaseAdmin
+      .from('gallery_images')
+      .insert({
+        public_id: uploadResult.public_id,
+        url: uploadResult.secure_url,
         category,
-        title || null,
-        description || null,
-        altText || null,
-        uploadResult.size,
-        uploadResult.mimeType,
-        user.id
-      ]
-    )
+        title: formData.get('title') as string || null,
+        description: formData.get('description') as string || null,
+        alt_text: formData.get('alt_text') as string || null,
+        width: uploadResult.width,
+        height: uploadResult.height,
+        format: uploadResult.format,
+        uploaded_by: user.id,
+      })
+      .select()
+    
+    if (error) throw error
     
     return NextResponse.json({
       success: true,
-      image: {
-        id: result.lastID,
-        ...uploadResult
-      }
+      image: data[0]
     })
     
   } catch (error: any) {
