@@ -132,7 +132,7 @@
 # Clone the repository
 git clone https://github.com/yourusername/suguru-weddings.git
 cd suguru-weddings
-
+<div align= "left">
 🔐 Admin Access
 🔑 Default Credentials
 <div align="center" style="background: linear-gradient(135deg, #2C2C2C 0%, #1a1a1a 100%); color: white; padding: 20px; border-radius: 10px; margin: 20px 0;"> <table style="color: white; margin: 0 auto;"> <tr> <td align="right"><strong>👤 Username:</strong></td> <td><code>admin</code></td> </tr> <tr> <td align="right"><strong>🔒 Password:</strong></td> <td><code>admin123</code></td> </tr> </table> </div>
